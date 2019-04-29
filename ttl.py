@@ -1,10 +1,14 @@
+#!/usr/bin/env python3
+
+LOCATIONS = [ 'tokyo', 'moscow' ]
+
 import sys
 HOST = 'tokyo'
 DOMAIN = 'domain'
-LOCATIONS = [ 'tokyo', 'moscow' ]
+if len(sys.argv)>1: HOST = sys.argv[1]
+if len(sys.argv)>2: DOMAIN = sys.argv[2]
 
 from scapy.all import *
-import time
 
 ping4 = {}
 ping6 = {}
