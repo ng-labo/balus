@@ -1,44 +1,62 @@
 #!/usr/bin/env python3
 
 import subprocess
-import os, time
+import os, stat, time
 import json
+import traceback
 
-import satellites
+from defines import *
 import slack
 
-NODESTAT = 'node_stat.json'
-sshcmd = [ '/usr/bin/ssh', '-q', '-F/dev/null', '-oPasswordAuthentication=no', '-oKbdInteractiveAuthentication=no', '-oUseRoaming=no', '-oStrictHostKeyChecking=no' ,'-oConnectTimeout=20', '-oServerAliveCountMax=120', '-oServerAliveInterval=1', '-oControlPath=/tmp/%r@%h:%p', '-oControlMaster=auto', '-oControlPersist=yes', '-p', '22' ]
+def sockname(hostname):
+   return "/tmp/%s@%s:%d" % ( 'nao', hostname, 22 )
 
-node_stat = dict.fromkeys(satellites.satellites)
-try:
-    node_stat = json.load(open(NODESTAT))
-except:
-    print('not found node_stat.json')
+def init_node_stat():
+    node_stat = dict.fromkeys(NODES)
+    try:
+        node_stat = json.load(open(NODESTAT))
+    except:
+        print('not found node_stat.json')
+    return node_stat
+
+def okaysocket(node):
+    socketfile = sockname(node)
+    ret = False
+    try:
+        s = os.stat(socketfile)
+        ret = stat.S_ISSOCK(s.st_mode)
+    except:
+        traceback.print_exc()
+    return ret
 
 def recover(node, curstat):
     if curstat == 'ok':
         slack.sendmsg(node + ":NG")
-    node_stat[node] = 'ng'
+    sshcmd = list(SSHCMDTMPL)
     sshcmd.append(node)
     sshcmd.append('exit')
     sshcmd.append('0')
     ret = 'ng'
     try:
-        subprocess.run(sshcmd)
-        ret = 'ok'
+        r =subprocess.run(sshcmd)
+        if r.returncode==0:
+            ret = 'ok'
     except:
         pass
     return ret
 
-for node in satellites.satellites:
-    socketfile = '/tmp/'  + node + ':22'
-    try:
-        os.stat(socketfile)
-        node_stat[node] = 'ok'
-    except:
-        node_stat[node] = recover(node, node_stat[node])
-        if node_stat[node] == 'ok':
-            slack.sendmsg(node + ":RECOVERED")
+def main():
+    node_stat = init_node_stat()
+    for node in NODES:
+        hostname = node + '.' + DOMAIN
+        st = okaysocket(hostname)
+        if st==True:
+            node_stat[node] = 'ok'
+        else:
+            node_stat[node] = recover(hostname, node_stat[node])
+            if node_stat[node] == 'ok':
+                slack.sendmsg(node + ":RECOVERED")
 
-json.dump(open(NODESTAT, 'w'))
+    json.dump(node_stat, open(NODESTAT, 'w'))
+
+main()
