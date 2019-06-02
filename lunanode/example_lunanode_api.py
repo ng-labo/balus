@@ -7,7 +7,6 @@ import http.client as http
 import urllib.parse as urllib
 import json, time
 import hmac, hashlib
-import requests
 
 AP = 'dynamic.lunanode.com'
 
