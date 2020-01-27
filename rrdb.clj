@@ -5,19 +5,30 @@
 
 (defn list-pre [asnum] (-> (slurp (radb-url asnum)) (html/html-snippet)(html/select [:pre])))
 
-(defn makeonemap [x]
+(defn parse-content [x]
   (reduce (fn [h [_ k v]](assoc h k v)) {} (re-seq #"(.+):\s+(.+)(\n|$)" x))
 )
-(defn proc [x]
-  ;(clojure.string/split (first (clojure.string/split (first((first (x :content)) :content)) #"\n" )) #"\s+")
-  ;(clojure.string/split (first((first (x :content)) :content)) #"\n" )
-  (let [o (makeonemap (first((first (x :content)) :content)))]
-     (if (get o "route" ) (println (format "%s:" (get o "route" ))))
-     (if (get o "route6") (println (format "%s:" (get o "route6"))))
-     (if (get o "descr" ) (println "    description:" (get o "descr") ))
-     (if (get o "origin" ) (println "    asn:" (clojure.string/replace (get o "origin") #"AS" "" )))
-     (println "    ignoreMorespecifics: false")
-  )
+
+(defn create-raw-map [x]
+  (map (fn [y] (parse-content (first((first (y :content)) :content)))) x)
+)
+(defn ip-map [x]
+  (reduce (fn [h o]
+    (cond
+      (get o "route") (assoc h (get o "route") o)
+      (get o "route6") (assoc h (get o "route6") o)
+      :else h))
+    {} x)
+)
+(defn print-list [x]
+  (map (fn [[k v]]
+        (println (format "%s:" k))
+        (println "    description:" (get v "descr"))
+        (println "    asn:" (clojure.string/replace (get v "origin") #"AS" ""))
+        (println "    ignoreMorespecifics: false")
+  ) x)
 )
 
-(doall (map proc (list-pre 16503)))
+(doall (print-list (ip-map (create-raw-map (list-pre 9370)))))
+(doall (print-list (ip-map (create-raw-map (list-pre 9371)))))
+(doall (print-list (ip-map (create-raw-map (list-pre 7684)))))
