@@ -7,8 +7,6 @@ import json, urllib.parse
 import vultrapi
 APIKEY = vultrapi.APIKEY
 
-'YSFOW2NWFLR4F2TWGYVKHS5PFEY4NR7FKESA'
-
 headers = {'API-Key': APIKEY}
 
 def exec(domain):
