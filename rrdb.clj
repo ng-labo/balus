@@ -26,6 +26,7 @@
         (println "    description:" (get v "descr"))
         (println "    asn:" (clojure.string/replace (get v "origin") #"AS" ""))
         (println "    ignoreMorespecifics: false")
+        (println "    ignore: false")
   ) x)
 )
 
