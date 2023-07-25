@@ -6,6 +6,7 @@
 #
 import sys
 import json, urllib.parse
+import http.client
 
 ip = sys.argv[1]
 
@@ -13,29 +14,27 @@ import vultrapi
 MYDOMAIN = vultrapi.MYDOMAIN
 APIKEY = vultrapi.APIKEY
 
-headers = {'API-Key': APIKEY}
+headers = {'Authorization': f"Bearer {APIKEY}"}
 hh = http.client.HTTPSConnection('api.vultr.com')
-hh.request("GET", "/v1/dns/records?domain=" + MYDOMAIN, headers=headers)
+hh.request("GET", f"/v2/domains/{MYDOMAIN}/records", headers=headers)
 
 rs = hh.getresponse()
 print(rs.status, rs.reason)
 ls = json.loads(rs.read().decode('utf-8'))
 
-for e in ls:
+for e in ls['records']:
     if e['type'] == 'A' and e['name'] == 'private':
         if e['data'] == ip:
             print("not to update")
             continue
         data = {}
-        data['domain'] = MYDOMAIN
         data['type'] = e['type']
         data['name'] = e['name']
-        data['RECORDID'] = e['RECORDID']
         data['data'] = ip
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        params = urllib.parse.urlencode(data)
-        hh.request("POST", "/v1/dns/update_record", params, headers)
+        headers['Content-Type'] = 'application/json'
+        params = json.dumps(data)
+        hh.request("PATCH", f"/v2/domains/{MYDOMAIN}/records/{e['id']}", params, headers)
         rs = hh.getresponse()
         print(rs.status, rs.reason)
-        if rs.status==200:
+        if rs.status in [200, 204]:
             print("update A record to", ip)
